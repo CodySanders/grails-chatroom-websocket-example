@@ -1,0 +1,28 @@
+.media-body h4 {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+li.active > a {
+    color: #31708f !important;
+    background-color: #bce8f1 !important;
+}
+
+.thick-header {
+    margin-bottom: 100px;
+}
+
+.form-signin {
+    width: 400px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 5px !important;
+}
+
+.full-height-scrollable {
+    height: 350px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
