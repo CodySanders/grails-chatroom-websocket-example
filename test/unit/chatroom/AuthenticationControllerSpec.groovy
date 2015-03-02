@@ -12,6 +12,8 @@ class AuthenticationControllerSpec extends Specification {
 
     def setup() {
         controller.authenticationWebSocketService = Mock(AuthenticationWebSocketService)
+        controller.clientService = Mock(ClientService)
+        controller.cookieService = Spy(CookieService)
     }
 
     def cleanup() {
@@ -56,13 +58,20 @@ class AuthenticationControllerSpec extends Specification {
         given:
         params.username = 'joe'
 
+        Client client = new Client(username: 'joe')
+        Cookie usernameCookie = new Cookie('chatUsername', 'joe')
+        Cookie userIdCookie = new Cookie('chatUserId', '1')
+
         when:
         controller.login()
 
         then:
-        1 * controller.authenticationWebSocketService.notifyUserLoggedIn(_)
-        response.getCookie('chatUsername').value == 'joe'
-        response.getCookie('chatUserId').value == '1'
+        1 * controller.clientService.loginClient('joe') >> client
+        1 * controller.cookieService.getRootPathSessionCookie('chatUsername', 'joe') >> usernameCookie
+        1 * controller.cookieService.getRootPathSessionCookie('chatUserId', 'null') >> userIdCookie
+        1 * controller.authenticationWebSocketService.notifyUserLoggedIn(client)
+        response.getCookie('chatUsername') == usernameCookie
+        response.getCookie('chatUserId') == userIdCookie
         response.redirectedUrl == '/chat'
     }
 
@@ -74,6 +83,9 @@ class AuthenticationControllerSpec extends Specification {
         controller.login()
 
         then:
+        1 * controller.clientService.loginClient('') >> null
+        0 * controller.cookieService.getRootPathSessionCookie(_, _)
+        0 * controller.cookieService.getRootPathSessionCookie(_, _)
         0 * controller.authenticationWebSocketService.notifyUserLoggedIn(_)
         !response.getCookie('chatUsername')
         !response.getCookie('chatUserId')
@@ -83,16 +95,22 @@ class AuthenticationControllerSpec extends Specification {
     void "test logout if user is in db, deactivate and remove cookies"() {
         given:
         request.setCookies(new Cookie('chatUserId', '1'))
-        Client client = new Client(id: 1, username: 'joe', active: true).save(failOnError: true)
+
+        Client client = new Client(id: 1, username: 'joe')
+        Cookie usernameCookie = new Cookie('chatUsername', '')
+        Cookie userIdCookie = new Cookie('chatUserId', '')
 
         when:
         controller.logout()
 
         then:
+        1 * controller.clientService.getClient('1') >> client
+        1 * controller.cookieService.getRootPathExpiredCookie('chatUsername') >> usernameCookie
+        1 * controller.cookieService.getRootPathExpiredCookie('chatUserId') >> userIdCookie
+        1 * controller.clientService.logoutClient(client)
         1 * controller.authenticationWebSocketService.notifyUserLoggedOut(client)
-        !response.getCookie('chatUsername').maxAge
-        !response.getCookie('chatUserId').maxAge
-        !client.active
+        response.getCookie('chatUsername') == usernameCookie
+        response.getCookie('chatUserId') == userIdCookie
         response.redirectedUrl == '/'
     }
 }

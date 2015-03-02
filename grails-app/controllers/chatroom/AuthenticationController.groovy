@@ -1,9 +1,9 @@
 package chatroom
 
-import javax.servlet.http.Cookie
-
 class AuthenticationController {
     AuthenticationWebSocketService authenticationWebSocketService
+    ClientService clientService
+    CookieService cookieService
 
     def index() {
         String username = g.cookie(name: 'chatUsername')
@@ -15,21 +15,11 @@ class AuthenticationController {
     }
 
     def login() {
-        Client client = Client.findOrCreateByUsername(params.username)
-        client.active = true
-        client = client.save(flush: true)
+        Client client = clientService.loginClient(params.username)
 
         if(client) {
-            Cookie cookie = new Cookie("chatUsername", client.username)
-            cookie.maxAge = -1
-            cookie.path = '/'
-            response.addCookie(cookie)
-
-            cookie = new Cookie("chatUserId", client.id.toString())
-            cookie.maxAge = -1
-            cookie.path = '/'
-            response.addCookie(cookie)
-
+            response.addCookie(cookieService.getRootPathSessionCookie('chatUsername', client.username))
+            response.addCookie(cookieService.getRootPathSessionCookie('chatUserId', client.id.toString()))
             authenticationWebSocketService.notifyUserLoggedIn(client)
 
             redirect(controller: 'chat', action: 'index')
@@ -39,24 +29,12 @@ class AuthenticationController {
     }
 
     def logout() {
-        Client client = Client.get(g.cookie(name: 'chatUserId'))
+        Client client = clientService.getClient(g.cookie(name: 'chatUserId'))
 
-        Cookie cookie = new Cookie("chatUsername", '')
-        cookie.maxAge = 0
-        cookie.path = '/'
-        response.addCookie(cookie)
-
-        cookie = new Cookie("chatUserId", client.id.toString())
-        cookie.maxAge = 0
-        cookie.path = '/'
-        response.addCookie(cookie)
-
+        response.addCookie(cookieService.getRootPathExpiredCookie('chatUsername'))
+        response.addCookie(cookieService.getRootPathExpiredCookie('chatUserId'))
+        clientService.logoutClient(client)
         authenticationWebSocketService.notifyUserLoggedOut(client)
-
-        if(client) {
-            client.active = false
-            client.save(flush: true)
-        }
 
         redirect(action: 'index')
     }

@@ -35,7 +35,7 @@ environments {
             dbCreate = "create"
             driverClassName = "com.mysql.jdbc.Driver"
             dialect = org.hibernate.dialect.MySQL5InnoDBDialect
-            uri = new URI(System.env.CLEARDB_DATABASE_URL?:"mysql://b513c0dd99e6d4:84f9a7ed@us-cdbr-iron-east-01.cleardb.net/heroku_5f3087aedfb227e?reconnect=true")
+            uri = new URI(System.env.CLEARDB_DATABASE_URL)
             url = "jdbc:mysql://"+uri.host+uri.path
             username = uri.userInfo.split(":")[0]
             password = uri.userInfo.split(":")[1]
