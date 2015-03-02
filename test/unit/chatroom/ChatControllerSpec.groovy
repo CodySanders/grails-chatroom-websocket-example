@@ -1,16 +1,16 @@
 package chatroom
 
-import grails.plugin.cookie.CookieService
 import grails.test.mixin.Mock
 import grails.test.mixin.TestFor
 import spock.lang.Specification
+
+import javax.servlet.http.Cookie
 
 @TestFor(ChatController)
 @Mock(Client)
 class ChatControllerSpec extends Specification {
 
     def setup() {
-        controller.cookieService = Mock(CookieService)
     }
 
     def cleanup() {
@@ -18,6 +18,7 @@ class ChatControllerSpec extends Specification {
 
     void "test index is rendered when user is active in db with valid cookie"() {
         given:
+        request.setCookies(new Cookie('chatUsername', 'joe'))
         new Client(username: 'joe', active: true).save(failOnError: true)
         new Client(username: 'userNotActive', active: false).save(failOnError: true)
 
@@ -25,7 +26,6 @@ class ChatControllerSpec extends Specification {
         controller.index()
 
         then:
-        1 * controller.cookieService.getCookie('chatUsername') >> 'joe'
         view == '/chat/index'
         model.currentUsers.size() == 1
     }
@@ -38,19 +38,18 @@ class ChatControllerSpec extends Specification {
         controller.index()
 
         then:
-        1 * controller.cookieService.getCookie('chatUsername') >> null
         response.redirectedUrl == '/'
     }
 
     void "test redirected to authentication index when user is not active in db but has valid cookie"() {
         given:
+        request.setCookies(new Cookie('chatUsername', 'joe'))
         new Client(username: 'joe', active: false).save(failOnError: true)
 
         when:
         controller.index()
 
         then:
-        1 * controller.cookieService.getCookie('chatUsername') >> 'joe'
         response.redirectedUrl == '/'
     }
 }

@@ -1,9 +1,10 @@
 package chatroom
 
-import grails.plugin.cookie.CookieService
 import grails.test.mixin.Mock
 import grails.test.mixin.TestFor
 import spock.lang.Specification
+
+import javax.servlet.http.Cookie
 
 @TestFor(AuthenticationController)
 @Mock(Client)
@@ -11,7 +12,6 @@ class AuthenticationControllerSpec extends Specification {
 
     def setup() {
         controller.authenticationWebSocketService = Mock(AuthenticationWebSocketService)
-        controller.cookieService = Mock(CookieService)
     }
 
     def cleanup() {
@@ -19,13 +19,13 @@ class AuthenticationControllerSpec extends Specification {
 
     void "test redirected to chat index when user is active in db with valid cookie"() {
         given:
+        request.setCookies(new Cookie('chatUsername', 'joe'))
         new Client(username: 'joe', active: true).save(failOnError: true)
 
         when:
         controller.index()
 
         then:
-        1 * controller.cookieService.getCookie('chatUsername') >> 'joe'
         response.redirectedUrl == '/chat'
     }
 
@@ -37,19 +37,18 @@ class AuthenticationControllerSpec extends Specification {
         controller.index()
 
         then:
-        1 * controller.cookieService.getCookie('chatUsername') >> null
         view == '/authentication/index'
     }
 
     void "test index rendered when user is not active in db but has valid cookie"() {
         given:
+        request.setCookies(new Cookie('chatUsername', 'joe'))
         new Client(username: 'joe', active: false).save(failOnError: true)
 
         when:
         controller.index()
 
         then:
-        1 * controller.cookieService.getCookie('chatUsername') >> 'joe'
         view == '/authentication/index'
     }
 
@@ -83,16 +82,16 @@ class AuthenticationControllerSpec extends Specification {
 
     void "test logout if user is in db, deactivate and remove cookies"() {
         given:
+        request.setCookies(new Cookie('chatUserId', '1'))
         Client client = new Client(id: 1, username: 'joe', active: true).save(failOnError: true)
 
         when:
         controller.logout()
 
         then:
-        1 * controller.cookieService.getCookie('chatUserId') >> 1
-        1 * controller.cookieService.deleteCookie('chatUsername')
-        1 * controller.cookieService.deleteCookie('chatUserId')
         1 * controller.authenticationWebSocketService.notifyUserLoggedOut(client)
+        !response.getCookie('chatUsername').maxAge
+        !response.getCookie('chatUserId').maxAge
         !client.active
         response.redirectedUrl == '/'
     }

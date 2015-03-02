@@ -62,7 +62,6 @@ grails.project.dependency.resolution = {
         compile ":scaffolding:2.1.0"
         compile ':cache:1.1.6'
         compile ":asset-pipeline:1.8.7"
-        compile ':cookie:1.1.0'
         compile ":spring-websocket:1.0.0"
 
         // plugins needed at runtime but not for compilation

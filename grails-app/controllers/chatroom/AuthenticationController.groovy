@@ -1,15 +1,12 @@
 package chatroom
 
-import grails.plugin.cookie.CookieService
-
 import javax.servlet.http.Cookie
 
 class AuthenticationController {
     AuthenticationWebSocketService authenticationWebSocketService
-    CookieService cookieService
 
     def index() {
-        String username = cookieService.getCookie('chatUsername')
+        String username = g.cookie(name: 'chatUsername')
 
         if(username && Client.findByUsernameAndActive(username, true))
             redirect(controller: 'chat', action: 'index')
@@ -42,10 +39,18 @@ class AuthenticationController {
     }
 
     def logout() {
-        Client client = Client.get(cookieService.getCookie('chatUserId'))
+        Client client = Client.get(g.cookie(name: 'chatUserId'))
 
-        cookieService.deleteCookie('chatUsername')
-        cookieService.deleteCookie('chatUserId')
+        Cookie cookie = new Cookie("chatUsername", '')
+        cookie.maxAge = 0
+        cookie.path = '/'
+        response.addCookie(cookie)
+
+        cookie = new Cookie("chatUserId", client.id.toString())
+        cookie.maxAge = 0
+        cookie.path = '/'
+        response.addCookie(cookie)
+
         authenticationWebSocketService.notifyUserLoggedOut(client)
 
         if(client) {
